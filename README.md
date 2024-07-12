@@ -1,7 +1,7 @@
 # Calculate
 my C++ first program that I programed like some aplication.
 # install
-to install you need just Cmake 3.10 or newer and libraries:
+to install you need just Cmake 3.10 or newer and libraries:  
   SDL2  
   SDL_ttf
 ______________________________________________________________
