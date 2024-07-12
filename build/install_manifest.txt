@@ -1,5 +1,0 @@
-/usr/local/include/calculate.h
-/usr/local/bin/Calculate
-/usr/local/share/applications/Calculate.desktop
-/usr/local/share/icons/hicolor/48x48/apps/CalculateIcon.png
-/usr/local/share/fonts/truetype/JosefinSans-Light.ttf

@@ -1,7 +1,0 @@
-/media/lukas/500GB_hdd/programování/C++/programy a aplikace/Calculate_w/build/CMakeFiles/Calculate.dir
-/media/lukas/500GB_hdd/programování/C++/programy a aplikace/Calculate_w/build/CMakeFiles/edit_cache.dir
-/media/lukas/500GB_hdd/programování/C++/programy a aplikace/Calculate_w/build/CMakeFiles/rebuild_cache.dir
-/media/lukas/500GB_hdd/programování/C++/programy a aplikace/Calculate_w/build/CMakeFiles/list_install_components.dir
-/media/lukas/500GB_hdd/programování/C++/programy a aplikace/Calculate_w/build/CMakeFiles/install.dir
-/media/lukas/500GB_hdd/programování/C++/programy a aplikace/Calculate_w/build/CMakeFiles/install/local.dir
-/media/lukas/500GB_hdd/programování/C++/programy a aplikace/Calculate_w/build/CMakeFiles/install/strip.dir
