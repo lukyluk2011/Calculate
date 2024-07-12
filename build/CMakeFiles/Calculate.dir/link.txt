@@ -1,1 +1,0 @@
-/usr/bin/c++ CMakeFiles/Calculate.dir/src/main.cpp.o CMakeFiles/Calculate.dir/api/calculate.cpp.o -o Calculate  -L/usr/lib/x86_64-linux-gnu  -lSDL2 /usr/lib/x86_64-linux-gnu/libSDL2_ttf.so 
