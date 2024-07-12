@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Calculate
+Exec=@CMAKE_INSTALL_PREFIX@/bin/Calculate
+Icon=@CMAKE_INSTALL_PREFIX@/share/icons/hicolor/48x48/apps/CalculateIcon.png
+Comment=
+Categories=Utility;Application;
+Terminal=false
+

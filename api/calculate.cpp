@@ -27,3 +27,8 @@ int mocni(int a, int b) {
     }
     return result;
 }
+
+int procenta(int chyb, int celkem) {
+    return chyb * 100 / celkem;
+}
+
