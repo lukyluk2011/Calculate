@@ -3,11 +3,13 @@
 #include <iostream>
 #include <sstream>
 #include <string>
-#include "config.h"
-#include "calculate.h"
 #include <thread>
 #include <chrono>
-// std::this_thread::sleep_for(std::chrono::milliseconds(50)); spát 50ms
+#include <mutex>
+#include <condition_variable>
+#include "config.h"
+#include "calculate.h"
+
 // Funkce pro vykreslení textu
 void renderText(SDL_Renderer* renderer, TTF_Font* font, const std::string& text, int x, int y) {
     SDL_Color textColor = {255, 255, 255, 255}; // Bílá barva
@@ -36,6 +38,107 @@ void renderText(SDL_Renderer* renderer, TTF_Font* font, const std::string& text,
 
     SDL_RenderCopy(renderer, textTexture, NULL, &dst);
     SDL_DestroyTexture(textTexture);
+}
+
+// Globální proměnné pro komunikaci mezi vlákny
+std::mutex mtx;
+std::condition_variable cv;
+bool ready = false;
+bool processed = false;
+int chyb = 0;
+int celkem = 0;
+int procenta_val = 0;
+std::string inputText = "";
+bool isInputChyb = true;
+bool displayResult = false;
+bool quit = false;
+
+void calculatePercentage() {
+    while (!quit) {
+        std::unique_lock<std::mutex> lock(mtx);
+        cv.wait(lock, [] { return ready || quit; });
+
+        if (quit) break;
+
+        // Provedení výpočtu
+        procenta_val = procenta(chyb, celkem);
+
+        processed = true;
+        ready = false;
+        cv.notify_one();
+    }
+}
+
+void renderUI(SDL_Renderer* ren, TTF_Font* font) {
+    SDL_Event e;
+    
+    while (!quit) {
+        std::unique_lock<std::mutex> lock(mtx);
+        while (SDL_PollEvent(&e)) {
+            if (e.type == SDL_QUIT) {
+                quit = true;
+                cv.notify_one();
+                break;
+            } else if (e.type == SDL_TEXTINPUT) {
+                inputText += e.text.text;
+            } else if (e.type == SDL_KEYDOWN) {
+                if (e.key.keysym.sym == SDLK_RETURN) {
+                    if (!displayResult) {
+                        if (isInputChyb) {
+                            std::istringstream iss(inputText);
+                            if (iss >> chyb) {
+                                std::cout << "chyb = " << chyb << std::endl;
+                            } else {
+                                std::cerr << "Neplatny vstup pro cast" << std::endl;
+                            }
+                            inputText = "";
+                            isInputChyb = false;
+                        } else {
+                            std::istringstream iss(inputText);
+                            if (iss >> celkem) {
+                                std::cout << "celkem = " << celkem << std::endl;
+
+                                ready = true;
+                                cv.notify_one();
+
+                                cv.wait(lock, [] { return processed; });
+
+                                displayResult = true;
+                            } else {
+                                std::cerr << "Neplatny vstup pro celkem" << std::endl;
+                            }
+                        }
+                    } else {
+                        quit = true;
+                        cv.notify_one();
+                    }
+                } else if (e.key.keysym.sym == SDLK_BACKSPACE && inputText.length() > 0) {
+                    inputText.pop_back();
+                }
+            }
+        }
+
+        // Vykreslení
+        SDL_RenderClear(ren);
+        SDL_SetRenderDrawColor(ren, 28, 79, 0, 255);
+
+        if (!displayResult) {
+            renderText(ren, font, "Zadejte cisla cast a celkem:", 50, 50);
+            if (isInputChyb) {
+                renderText(ren, font, "Cast: " + inputText, 50, 100);
+            } else {
+                renderText(ren, font, "Celkem: " + inputText, 50, 100);
+            }
+        } else {
+            std::ostringstream oss;
+            oss << "Procenta(chyb, celkem) = " << procenta_val << "%";
+            renderText(ren, font, oss.str(), 50, 150);
+        }
+
+        SDL_RenderPresent(ren);
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
 }
 
 int main(int argc, char* argv[]) {
@@ -67,11 +170,6 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // Nastavení barvy pozadí na #1C4F00
-    SDL_SetRenderDrawColor(ren, 28, 79, 0, 255);
-    SDL_RenderClear(ren);
-
-    // Načtení fontu z instalační cesty
     std::string fontPath = std::string(INSTALL_PREFIX) + "/share/fonts/truetype/JosefinSans-Light.ttf";
     TTF_Font* font = TTF_OpenFont(fontPath.c_str(), 24);
     if (font == nullptr) {
@@ -83,78 +181,12 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // Vykreslení úvodního textu
-    renderText(ren, font, "Zadejte cisla cast a celkem:", 50, 50);
+    std::thread calcThread(calculatePercentage);
 
-    // Povolení textového vstupu
-    SDL_StartTextInput();
+    renderUI(ren, font);
 
-    // Vytvoření textového pole pro vstup uživatele
-    std::string inputText = "";
-    bool isInputChyb = true; // Zda se jedná o vstup pro chyb (true) nebo celkem (false)
-    int chyb = 0; // Uchování hodnoty chyb pro pozdější použití
-    int celkem = 0; // Uchování hodnoty celkem pro pozdější použití
-    int procenta_val = 0; // Uchování hodnoty procent
+    calcThread.join();
 
-    SDL_Event e;
-    bool quit = false;
-    bool displayResult = false; // Indikátor, zda se má zobrazit výsledek
-
-    while (!quit) {
-        while (SDL_PollEvent(&e)) {
-            if (e.type == SDL_QUIT) {
-                quit = true;
-            } else if (e.type == SDL_TEXTINPUT) {
-                inputText += e.text.text; // Přidá text z události do vstupního textu
-            } else if (e.type == SDL_KEYDOWN) {
-                if (e.key.keysym.sym == SDLK_RETURN) {
-                    if (!displayResult) {
-                        if (isInputChyb) {
-                            std::istringstream iss(inputText);
-                            if (iss >> chyb) {
-                                std::cout << "chyb = " << chyb << std::endl;
-                            } else {
-                                std::cerr << "Neplatny vstup pro cast" << std::endl;
-                            }
-                            inputText = "";
-                            isInputChyb = false;
-                            SDL_RenderClear(ren); // Vymazání obrazovky
-                            SDL_SetRenderDrawColor(ren, 28, 79, 0, 255); // Opětovné nastavení barvy pozadí
-                            renderText(ren, font, "Zadejte celkem:", 50, 100); // Zobrazí výzvu pro celkem
-                        } else {
-                            std::istringstream iss(inputText);
-                            if (iss >> celkem) {
-                                std::cout << "celkem = " << celkem << std::endl;
-                                procenta_val = procenta(chyb, celkem);
-                                std::cout << "Procenta(chyb, celkem) = " << procenta_val << "%" << std::endl;
-
-                                std::ostringstream oss;
-                                oss << "Procenta(chyb, celkem) = " << procenta_val << "%";
-                                SDL_RenderClear(ren); // Vymazání obrazovky
-                                SDL_SetRenderDrawColor(ren, 28, 79, 0, 255); // Opětovné nastavení barvy pozadí
-                                renderText(ren, font, oss.str(), 50, 150); // Zobrazí výsledek v textovém poli
-
-                                // Přejde do režimu zobrazení výsledku
-                                displayResult = true;
-                            } else {
-                                std::cerr << "Neplatny vstup pro celkem" << std::endl;
-                            }
-                        }
-                    } else {
-                        // Uživatel stiskne Enter pro ukončení
-                        quit = true;
-                    }
-                } else if (e.key.keysym.sym == SDLK_BACKSPACE && inputText.length() > 0) {
-                    inputText.pop_back(); // Odstraní poslední znak
-                }
-            }
-        }
-
-        // Aktualizace obrazovky
-        SDL_RenderPresent(ren);
-    }
-
-    // Uvolnění prostředků
     TTF_CloseFont(font);
     SDL_DestroyRenderer(ren);
     SDL_DestroyWindow(win);
@@ -163,4 +195,3 @@ int main(int argc, char* argv[]) {
 
     return 0;
 }
-
